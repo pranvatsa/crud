@@ -15,7 +15,6 @@ var (
 	jsonFile = "users.json"
 	mutex    sync.RWMutex // Read-Write Mutex for concurrency safety
 	users    map[string]models.User
-	isLoaded bool
 )
 
 func InitJSONStorage(filename string) {
@@ -40,14 +39,10 @@ func loadUsers() {
 	if err := json.Unmarshal(data, &users); err != nil {
 		fmt.Println("❌ Error unmarshaling JSON:", err)
 		users = make(map[string]models.User) // Reset on failure
-	} else {
-		isLoaded = true
 	}
 }
 
 func saveUsers() error {
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	data, err := json.MarshalIndent(users, "", "  ")
 	if err != nil {
