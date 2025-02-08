@@ -1,20 +1,28 @@
-// docker-compose.yml
 version: "3.8"
 services:
   app:
     build: .
+    container_name: go-crud-app
     ports:
       - "8080:8080"
     depends_on:
       - mongo
     environment:
-      MONGO_URI: "mongodb://mongo:27017"
+      MONGO_URI: "mongodb://admin:secret@mongo:27017"
+      STORAGE_MODE: "json"
+    restart: always
+
   mongo:
     image: mongo
-    container_name: mongo
+    container_name: mongodb
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret
     volumes:
       - mongo_data:/data/db
+    restart: always
+
 volumes:
   mongo_data:

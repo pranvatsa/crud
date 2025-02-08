@@ -1,7 +1,7 @@
 package config
 
-import (
-	"os"
+const (
+	StorageMode = "json"
+	MongoURI    = "mongodb://localhost:27017"
+	MongoDBName = "mydatabase"
 )
-
-var MongoURI = os.Getenv("MONGO_URI")
