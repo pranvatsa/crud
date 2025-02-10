@@ -14,7 +14,6 @@ var (
 	StorageMode string
 	MongoURI    string
 	MongoDBName string
-	port        string
 )
 
 func LoadConfig() {

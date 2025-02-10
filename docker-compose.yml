@@ -1,7 +1,10 @@
 version: "3.8"
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        MODE: https
     container_name: go-crud-app
     ports:
       - "8080:8080"
@@ -9,7 +12,10 @@ services:
       - mongo
     environment:
       MONGO_URI: "mongodb://admin:secret@mongo:27017"
-      STORAGE_MODE: "json"
+      STORAGE_MODE: "mongo"
+    volumes:
+      - ./cert.pem:/app/cert.pem
+      - ./key.pem:/app/key.pem
     restart: always
 
   mongo:

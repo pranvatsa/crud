@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -16,6 +17,11 @@ import (
 )
 
 func main() {
+	https := flag.Bool("s", false, "Run server with HTTPS")
+	certFile := flag.String("cert", "", "Path to the SSL certificate file")
+	keyFile := flag.String("key", "", "Path to the SSL key file")
+	flag.Parse()
+
 	config.LoadConfig()
 	fmt.Println("🚀 Running in", config.StorageMode, "mode")
 
@@ -32,14 +38,22 @@ func main() {
 
 	port := getPort()
 	fmt.Println("✅ Server running on port:", port)
-	if err := router.Run(":" + port); err != nil {
-		log.Fatal("Failed to start server:", err)
+	if *https {
+		if *certFile == "" || *keyFile == "" {
+			log.Fatal("SSL certificate and key files must be provided for HTTPS")
+		}
+		if err := router.RunTLS(":"+port, *certFile, *keyFile); err != nil {
+			log.Fatal("Failed to start HTTPS server:", err)
+		}
+	} else {
+		if err := router.Run(":" + port); err != nil {
+			log.Fatal("Failed to start server:", err)
+		}
 	}
 }
 
 func getPort() string {
-	port := config.GetEnv("PORT", "8080")
-	return port
+	return config.GetEnv("PORT", "8080")
 }
 
 func initMongoDB() database.Database {
