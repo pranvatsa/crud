@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"crud/config"
@@ -16,23 +15,21 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var mongoClient *mongo.Client
-
 func main() {
-	storageMode := getStorageMode()
-	fmt.Println("🚀 Running in", storageMode, "mode")
+	config.LoadConfig()
+	fmt.Println("🚀 Running in", config.StorageMode, "mode")
 
-	if storageMode == "mongo" {
-		initMongoDB()
+	var db database.Database
+	if config.StorageMode == "mongo" {
+		db = initMongoDB()
 	} else {
 		fmt.Println("📁 Using JSON storage (users.json)")
-		database.InitJSONStorage("users.json")
+		db = database.NewJSONStorage("users.json")
 	}
 
 	router := gin.Default()
-	routes.RegisterUserRoutes(router)
+	routes.RegisterUserRoutes(router, db)
 
-	// Start server
 	port := getPort()
 	fmt.Println("✅ Server running on port:", port)
 	if err := router.Run(":" + port); err != nil {
@@ -40,40 +37,25 @@ func main() {
 	}
 }
 
-// getStorageMode returns "json" (default) or "mongo" based on config or environment variable
-func getStorageMode() string {
-	mode := os.Getenv("STORAGE_MODE")
-	if mode == "mongo" {
-		return "mongo"
-	}
-	return "json" // Default to JSON mode
-}
-
-// getPort returns the port from environment variable or default (8080)
 func getPort() string {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	port := config.GetEnv("PORT", "8080")
 	return port
 }
 
-func initMongoDB() {
+func initMongoDB() database.Database {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	clientOptions := options.Client().ApplyURI(config.MongoURI)
-	var err error
-	mongoClient, err = mongo.Connect(ctx, clientOptions)
+	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		log.Fatal("❌ Failed to connect to MongoDB:", err)
 	}
 
-	// Ping MongoDB
-	if err = mongoClient.Ping(ctx, nil); err != nil {
+	if err = client.Ping(ctx, nil); err != nil {
 		log.Fatal("❌ MongoDB not responding:", err)
 	}
 
 	fmt.Println("✅ Connected to MongoDB!")
-	database.InitMongoDB() // ✅ Ensure MongoDBName exists in config.go
+	return database.NewMongoDB(client, config.MongoDBName)
 }

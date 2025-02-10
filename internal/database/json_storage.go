@@ -11,100 +11,111 @@ import (
 	"github.com/google/uuid"
 )
 
-var (
-	jsonFile = "users.json"
-	mutex    sync.RWMutex // Read-Write Mutex for concurrency safety
+type JSONStorage struct {
+	filename string
+	mutex    sync.RWMutex
 	users    map[string]models.User
-)
-
-func InitJSONStorage(filename string) {
-	mutex.Lock()
-	defer mutex.Unlock()
-	jsonFile = filename
-
-	if _, err := os.Stat(jsonFile); os.IsNotExist(err) {
-		os.WriteFile(jsonFile, []byte("{}"), 0644)
-	}
-	loadUsers()
 }
 
-func loadUsers() {
-	data, err := os.ReadFile(jsonFile)
+func NewJSONStorage(filename string) *JSONStorage {
+	storage := &JSONStorage{filename: filename}
+	storage.init()
+	return storage
+}
+
+func (s *JSONStorage) init() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	if _, err := os.Stat(s.filename); os.IsNotExist(err) {
+		os.WriteFile(s.filename, []byte("{}"), 0644)
+	}
+	s.loadUsers()
+}
+
+func (s *JSONStorage) loadUsers() {
+	data, err := os.ReadFile(s.filename)
 	if err != nil {
 		fmt.Println("❌ Error reading JSON file:", err)
-		users = make(map[string]models.User)
+		s.users = make(map[string]models.User)
 		return
 	}
 
-	if err := json.Unmarshal(data, &users); err != nil {
+	if err := json.Unmarshal(data, &s.users); err != nil {
 		fmt.Println("❌ Error unmarshaling JSON:", err)
-		users = make(map[string]models.User) // Reset on failure
+		s.users = make(map[string]models.User)
 	}
 }
 
-func saveUsers() error {
-
-	data, err := json.MarshalIndent(users, "", "  ")
+func (s *JSONStorage) saveUsers() error {
+	data, err := json.MarshalIndent(s.users, "", "  ")
 	if err != nil {
 		return fmt.Errorf("❌ Error marshaling JSON: %v", err)
 	}
 
-	if err := os.WriteFile(jsonFile, data, 0644); err != nil {
+	if err := os.WriteFile(s.filename, data, 0644); err != nil {
 		return fmt.Errorf("❌ Error writing to JSON file: %v", err)
 	}
 
 	return nil
 }
 
-func GetJSONUsers() ([]models.User, error) {
-	mutex.RLock()
-	defer mutex.RUnlock()
+func (s *JSONStorage) GetUsers() ([]models.User, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 
 	var userList []models.User
-	for _, user := range users {
+	for _, user := range s.users {
 		userList = append(userList, user)
 	}
 	return userList, nil
 }
 
-func GetJSONUserByID(id string) (models.User, bool) {
-	mutex.RLock()
-	defer mutex.RUnlock()
+func (s *JSONStorage) GetUserByID(id string) (models.User, error) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 
-	user, exists := users[id]
-	return user, exists
+	user, exists := s.users[id]
+	if !exists {
+		return models.User{}, fmt.Errorf("user not found")
+	}
+	return user, nil
 }
 
-func CreateJSONUser(user models.User) error {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (s *JSONStorage) CreateUser(user models.User) (string, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	id := uuid.New().String()
-	users[id] = user
-	return saveUsers()
+	user.ID = id
+	s.users[id] = user
+	if err := s.saveUsers(); err != nil {
+		return "", err
+	}
+	return id, nil
 }
 
-func UpdateJSONUser(id string, updatedUser models.User) error {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (s *JSONStorage) UpdateUser(id string, updatedUser models.User) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	if _, exists := users[id]; !exists {
-		return fmt.Errorf("❌ User with ID %s not found", id)
+	if _, exists := s.users[id]; !exists {
+		return fmt.Errorf("user not found")
 	}
 
-	updatedUser.ID = id // Preserve the ID
-	users[id] = updatedUser
-	return saveUsers()
+	updatedUser.ID = id
+	s.users[id] = updatedUser
+	return s.saveUsers()
 }
 
-func DeleteJSONUser(id string) error {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (s *JSONStorage) DeleteUser(id string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	if _, exists := users[id]; !exists {
-		return fmt.Errorf("❌ User with ID %s not found", id)
+	if _, exists := s.users[id]; !exists {
+		return fmt.Errorf("user not found")
 	}
 
-	delete(users, id)
-	return saveUsers()
+	delete(s.users, id)
+	return s.saveUsers()
 }

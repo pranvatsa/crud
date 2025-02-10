@@ -1,0 +1,44 @@
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Output of the build process
+bin/
+build/
+
+# Temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+
+# Dependency directories
+vendor/
+node_modules/
+
+# Go specific
+*.exe
+*.test
+*.out
+
+# IDE specific
+.vscode/
+.idea/
+
+# Docker specific
+docker-compose.override.yml
+
+# Environment variables
+.env
+
+# User-specific files
+users.json
+
+# OS generated files
+.DS_Store
+Thumbs.db
